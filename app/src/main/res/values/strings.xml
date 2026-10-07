@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">My Delivery Manager</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_deliveries">Deliveries</string>
+    <string name="nav_customers">Customers</string>
+    <string name="nav_map">Map</string>
+    <string name="nav_more">More</string>
+    <string name="nav_income">Income</string>
+    <string name="nav_cod">COD</string>
+    <string name="nav_expenses">Expenses</string>
+    <string name="nav_reports">Reports</string>
+    <string name="nav_settings">Settings</string>
+    <string name="coming_in_stage">Coming in Stage %1$d</string>
+</resources>
