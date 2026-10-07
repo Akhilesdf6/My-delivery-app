@@ -3,6 +3,7 @@ package com.mydelivery.manager.ui.screens
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,17 +14,21 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +42,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mydelivery.manager.data.local.entity.ShipmentEntity
 import com.mydelivery.manager.ui.utils.AppViewModelProvider
 import com.mydelivery.manager.ui.viewmodels.DeliveryViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 
 @Composable
 fun DeliveriesScreen(
@@ -45,40 +53,77 @@ fun DeliveriesScreen(
 ) {
     val shipments by viewModel.shipments.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
+    var search by remember { mutableStateOf("") }
     val context = LocalContext.current
+
+    val filtered = remember(shipments, search) {
+        if (search.isBlank()) {
+            shipments
+        } else {
+            shipments.filter {
+                (it.shipmentId ?: "").contains(search, ignoreCase = true)
+            }
+        }
+    }
 
     Scaffold(
         modifier = modifier,
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "Add Delivery")
+            FloatingActionButton(
+                onClick = { showAddDialog = true }
+            ) {
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = "Add Shipment"
+                )
             }
         }
     ) { paddingValues ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
+
             Text(
-                text = "Deliveries",
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(bottom = 16.dp)
+                text = "Shipments",
+                style = MaterialTheme.typography.headlineMedium
             )
 
-            if (shipments.isEmpty()) {
+            Spacer(modifier = Modifier.height(10.dp))
+
+            OutlinedTextField(
+                value = search,
+                onValueChange = { search = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text("Search Shipment ID") },
+                leadingIcon = {
+                    Icon(Icons.Filled.Search, contentDescription = null)
+                }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (filtered.isEmpty()) {
                 Text(
-                    text = "No deliveries found. Click + to add.",
-                    style = MaterialTheme.typography.bodyLarge,
+                    text = if (search.isBlank())
+                        "No shipments yet. Tap + to add."
+                    else
+                        "No matching shipment found.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(shipments, key = { it.id }) { shipment ->
-                        ShipmentItem(shipment = shipment)
+                    items(
+                        filtered,
+                        key = { it.id }
+                    ) { shipment ->
+                        ShipmentItem(shipment)
                     }
                 }
             }
@@ -86,12 +131,28 @@ fun DeliveriesScreen(
     }
 
     if (showAddDialog) {
-        AddDeliveryDialog(
-            onDismiss = { showAddDialog = false },
-            onConfirm = { trackingId, codAmount ->
-                viewModel.addDelivery(trackingId, codAmount) { message ->
-                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        AddShipmentDialog(
+            onDismiss = {
+                showAddDialog = false
+            },
+            onConfirm = { shipmentId, name, phone, address, locality, pincode, cod ->
+
+                viewModel.addFullDelivery(
+                    shipmentId = shipmentId,
+                    customerName = name,
+                    phone = phone,
+                    fullAddress = address,
+                    locality = locality,
+                    pincode = pincode,
+                    codAmountRupees = cod
+                ) { message ->
+                    Toast.makeText(
+                        context,
+                        message,
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
+
                 showAddDialog = false
             }
         )
@@ -99,36 +160,139 @@ fun DeliveriesScreen(
 }
 
 @Composable
-fun AddDeliveryDialog(
+private fun AddShipmentDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit
+    onConfirm: (
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+        String
+    ) -> Unit
 ) {
-    var trackingId by remember { mutableStateOf("") }
-    var codAmount by remember { mutableStateOf("") }
+    var shipmentId by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var address by remember { mutableStateOf("") }
+    var locality by remember { mutableStateOf("") }
+    var pincode by remember { mutableStateOf("") }
+    var cod by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add New Delivery") },
+        title = {
+            Text("Add Shipment")
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = trackingId,
-                    onValueChange = { trackingId = it },
-                    label = { Text("Shipment ID (Optional)") },
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = codAmount,
-                    onValueChange = { codAmount = it },
-                    label = { Text("COD Amount ₹ (Optional)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true
-                )
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item {
+                    OutlinedTextField(
+                        value = shipmentId,
+                        onValueChange = { shipmentId = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Shipment ID") },
+                        singleLine = true
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Customer Name") },
+                        singleLine = true
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = phone,
+                        onValueChange = { phone = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Phone Number") },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Phone
+                        ),
+                        singleLine = true
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = address,
+                        onValueChange = { address = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Customer Address") },
+                        minLines = 3
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = locality,
+                        onValueChange = { locality = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Locality") },
+                        singleLine = true
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = pincode,
+                        onValueChange = { pincode = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Pincode") },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number
+                        ),
+                        singleLine = true
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = cod,
+                        onValueChange = { cod = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("COD Amount ₹") },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal
+                        ),
+                        singleLine = true
+                    )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Unknown information can be left blank. Nothing will be invented.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(trackingId, codAmount) }) {
-                Text("Save")
+            TextButton(
+                onClick = {
+                    onConfirm(
+                        shipmentId,
+                        name,
+                        phone,
+                        address,
+                        locality,
+                        pincode,
+                        cod
+                    )
+                }
+            ) {
+                Text("Save Shipment")
             }
         },
         dismissButton = {
@@ -140,30 +304,52 @@ fun AddDeliveryDialog(
 }
 
 @Composable
-fun ShipmentItem(shipment: ShipmentEntity, modifier: Modifier = Modifier) {
+private fun ShipmentItem(
+    shipment: ShipmentEntity
+) {
     Card(
-        modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "ID: ${shipment.shipmentId ?: "Not Assigned"}",
+                text = shipment.shipmentId
+                    ?.takeIf { it.isNotBlank() }
+                    ?: "Shipment ID: Unknown",
                 style = MaterialTheme.typography.titleMedium
             )
-            Spacer(modifier = Modifier.height(4.dp))
+
+            Spacer(modifier = Modifier.height(5.dp))
+
             Text(
                 text = "Status: ${shipment.status.name}",
                 style = MaterialTheme.typography.bodyMedium
             )
-            if (shipment.codAmountPaise != null && shipment.codAmountPaise > 0) {
+
+            shipment.codAmountPaise?.let { paise ->
+                if (paise > 0) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "COD: ₹%.2f".format(paise / 100.0),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            if (shipment.deliveredAt != null) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "COD: ₹${shipment.codAmountPaise / 100.0}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Text("Delivered")
+            }
+
+            shipment.undeliveredReason?.let { reason ->
+                if (reason.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Reason: $reason")
+                }
             }
         }
     }
