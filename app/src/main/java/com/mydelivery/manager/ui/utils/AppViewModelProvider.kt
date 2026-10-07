@@ -14,7 +14,11 @@ object AppViewModelProvider {
     val Factory = viewModelFactory {
         initializer {
             val app = myDeliveryManagerApplication()
-            HomeViewModel(app.container.shipmentRepository)
+            HomeViewModel(
+                app.container.shipmentRepository,
+                app.container.incomeRepository,
+                app.container.expenseRepository
+            )
         }
         initializer {
             val app = myDeliveryManagerApplication()

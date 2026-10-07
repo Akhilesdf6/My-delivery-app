@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -20,6 +23,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mydelivery.manager.ui.utils.AppViewModelProvider
 import com.mydelivery.manager.ui.viewmodels.HomeViewModel
+import java.util.Locale
 
 @Composable
 fun HomeScreen(
@@ -35,8 +39,14 @@ fun HomeScreen(
     ) {
         Text(
             text = "Dashboard",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = 16.dp)
+            style = MaterialTheme.typography.headlineMedium
+        )
+
+        Text(
+            text = "Delivery & earnings overview",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
         )
 
         Row(
@@ -44,10 +54,11 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             StatCard(
-                title = "Pending Deliveries",
+                title = "Pending",
                 value = uiState.pendingDeliveries.toString(),
                 modifier = Modifier.weight(1f)
             )
+
             StatCard(
                 title = "Delivered",
                 value = uiState.deliveredCount.toString(),
@@ -57,21 +68,48 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Row(
+        StatCard(
+            title = "Total Shipments",
+            value = uiState.totalDeliveries.toString(),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Money Summary",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        val moneyCards = listOf(
+            "Income" to formatRupees(uiState.incomePaise),
+            "Expenses" to formatRupees(uiState.expensePaise),
+            "Net" to formatRupees(uiState.netPaise)
+        )
+
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            StatCard(
-                title = "Total Shipments",
-                value = uiState.totalDeliveries.toString(),
-                modifier = Modifier.weight(1f)
-            )
+            items(moneyCards) { (title, value) ->
+                StatCard(
+                    title = title,
+                    value = value
+                )
+            }
         }
     }
 }
 
 @Composable
-fun StatCard(title: String, value: String, modifier: Modifier = Modifier) {
+fun StatCard(
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
     Card(
         modifier = modifier,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -80,16 +118,30 @@ fun StatCard(title: String, value: String, modifier: Modifier = Modifier) {
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = title, 
+                text = title,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(4.dp))
+
+            Spacer(modifier = Modifier.height(6.dp))
+
             Text(
-                text = value, 
-                style = MaterialTheme.typography.headlineLarge,
+                text = value,
+                style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
     }
+}
+
+private fun formatRupees(paise: Long): String {
+    val rupees = paise / 100
+    val remainingPaise = kotlin.math.abs(paise % 100)
+
+    return String.format(
+        Locale.US,
+        "₹%d.%02d",
+        rupees,
+        remainingPaise
+    )
 }
