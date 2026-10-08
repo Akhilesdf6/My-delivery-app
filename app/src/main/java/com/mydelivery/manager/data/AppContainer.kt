@@ -14,9 +14,23 @@ class AppContainer(context: Context) {
     private val database: AppDatabase by lazy { AppDatabase.getInstance(appContext) }
 
     val customerRepository: CustomerRepository by lazy {
-        CustomerRepository(database.customerDao(), database.addressDao())
+        CustomerRepository(
+            customerDao = database.customerDao(),
+            addressDao = database.addressDao(),
+            shipmentDao = database.shipmentDao(),
+            codDao = database.codDao()
+        )
     }
-    val shipmentRepository: ShipmentRepository by lazy { ShipmentRepository(database.shipmentDao()) }
+    val shipmentRepository: ShipmentRepository by lazy {
+        ShipmentRepository(
+            dao = database.shipmentDao(),
+            customerDao = database.customerDao(),
+            addressDao = database.addressDao(),
+            codDao = database.codDao(),
+            deliveryPhotoDao = database.deliveryPhotoDao(),
+            database = database
+        )
+    }
     val incomeRepository: IncomeRepository by lazy { IncomeRepository(database.incomeDao()) }
     val expenseRepository: ExpenseRepository by lazy { ExpenseRepository(database.expenseDao()) }
     val codRepository: CodRepository by lazy { CodRepository(database.codDao()) }

@@ -64,6 +64,7 @@ class DeliveryViewModel(
         locality: String,
         pincode: String,
         codAmountRupees: String,
+        labelUri: String? = null,
         onResult: (String) -> Unit
     ) {
         viewModelScope.launch {
@@ -114,14 +115,61 @@ class DeliveryViewModel(
                 updatedAt = now
             )
 
-            val result = shipmentRepository.addFullShipment(
-                shipmentId = cleanShipmentId,
-                customer = customer,
-                address = address,
-                codAmountPaise = paise
-            )
+            try {
+                val createdShipmentId = shipmentRepository.addFullShipment(
+                    shipmentId = cleanShipmentId,
+                    customer = customer,
+                    address = address,
+                    codAmountPaise = paise
+                )
 
-            onResult(result)
+                if (!labelUri.isNullOrBlank()) {
+                    shipmentRepository.saveDeliveryPhoto(
+                        shipmentId = createdShipmentId,
+                        uri = labelUri
+                    )
+                }
+
+                onResult("Delivery Added Successfully")
+            } catch (e: Exception) {
+                onResult(e.message ?: "Unable to add delivery")
+            }
+        }
+    }
+
+    fun markDelivered(
+        shipmentId: Long,
+        onResult: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val result = shipmentRepository.markDelivered(shipmentId)
+                onResult(result)
+            } catch (e: Exception) {
+                onResult(
+                    e.message ?: "Unable to mark delivery"
+                )
+            }
+        }
+    }
+
+    fun markUndelivered(
+        shipmentId: Long,
+        reason: String,
+        onResult: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val result = shipmentRepository.markUndelivered(
+                    shipmentId = shipmentId,
+                    reason = reason
+                )
+                onResult(result)
+            } catch (e: Exception) {
+                onResult(
+                    e.message ?: "Unable to update shipment"
+                )
+            }
         }
     }
 

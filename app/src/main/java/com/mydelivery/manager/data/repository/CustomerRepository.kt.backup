@@ -2,19 +2,14 @@ package com.mydelivery.manager.data.repository
 
 import com.mydelivery.manager.data.local.dao.AddressDao
 import com.mydelivery.manager.data.local.dao.CustomerDao
-import com.mydelivery.manager.data.local.dao.ShipmentDao
-import com.mydelivery.manager.data.local.dao.CodDao
 import com.mydelivery.manager.data.local.entity.AddressEntity
 import com.mydelivery.manager.data.local.entity.CustomerEntity
-import com.mydelivery.manager.data.model.CustomerDetails
 import kotlinx.coroutines.flow.Flow
 
 /** Customers and their addresses. Addresses are only ever added or edited explicitly, never overwritten silently. */
 class CustomerRepository(
     private val customerDao: CustomerDao,
     private val addressDao: AddressDao,
-    private val shipmentDao: ShipmentDao,
-    private val codDao: CodDao,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     fun observeAllCustomers(): Flow<List<CustomerEntity>> = customerDao.getAllCustomers()
@@ -22,31 +17,6 @@ class CustomerRepository(
     suspend fun getCustomerById(id: Long): CustomerEntity? = customerDao.getCustomerById(id)
 
     suspend fun getCustomerByPhone(phone: String): CustomerEntity? = customerDao.getCustomerByPhone(phone.trim())
-
-
-    suspend fun getCustomerDetails(customerId: Long): CustomerDetails? {
-        val customer = customerDao.getCustomerById(customerId) ?: return null
-
-        val addresses = addressDao.getAddressesForCustomer(customerId)
-        val shipments = shipmentDao.getShipmentsForCustomer(customerId)
-
-        val shipment = shipments.firstOrNull()
-
-        val address = shipment?.addressId?.let { addressId ->
-            addressDao.getAddressById(addressId)
-        } ?: addresses.firstOrNull()
-
-        val cod = shipment?.id?.let { shipmentId ->
-            codDao.getCodForShipment(shipmentId)
-        }
-
-        return CustomerDetails(
-            customer = customer,
-            address = address,
-            shipment = shipment,
-            cod = cod
-        )
-    }
 
     /** Searches name and phone. A blank query returns an empty list. */
     suspend fun searchCustomers(query: String): List<CustomerEntity> =

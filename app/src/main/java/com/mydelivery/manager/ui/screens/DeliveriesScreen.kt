@@ -1,6 +1,8 @@
 package com.mydelivery.manager.ui.screens
 
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,6 +44,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mydelivery.manager.data.local.entity.ShipmentEntity
 import com.mydelivery.manager.ui.utils.AppViewModelProvider
 import com.mydelivery.manager.ui.viewmodels.DeliveryViewModel
+import com.mydelivery.manager.utils.extractTextFromImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
@@ -135,7 +138,7 @@ fun DeliveriesScreen(
             onDismiss = {
                 showAddDialog = false
             },
-            onConfirm = { shipmentId, name, phone, address, locality, pincode, cod ->
+            onConfirm = { shipmentId, name, phone, address, locality, pincode, cod, labelUri ->
 
                 viewModel.addFullDelivery(
                     shipmentId = shipmentId,
@@ -144,7 +147,8 @@ fun DeliveriesScreen(
                     fullAddress = address,
                     locality = locality,
                     pincode = pincode,
-                    codAmountRupees = cod
+                    codAmountRupees = cod,
+                    labelUri = labelUri
                 ) { message ->
                     Toast.makeText(
                         context,
@@ -169,9 +173,12 @@ private fun AddShipmentDialog(
         String,
         String,
         String,
-        String
+        String,
+        String?
     ) -> Unit
 ) {
+    val context = LocalContext.current
+
     var shipmentId by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -179,6 +186,60 @@ private fun AddShipmentDialog(
     var locality by remember { mutableStateOf("") }
     var pincode by remember { mutableStateOf("") }
     var cod by remember { mutableStateOf("") }
+    var labelUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var isScanning by remember { mutableStateOf(false) }
+
+    val labelPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        labelUri = uri
+    }
+
+    LaunchedEffect(labelUri) {
+        val uri = labelUri ?: return@LaunchedEffect
+
+        isScanning = true
+
+        try {
+            val result = extractTextFromImage(
+                context = context,
+                uri = uri
+            )
+
+            result.possibleShipmentId?.let {
+                shipmentId = it
+            }
+
+            result.possibleName?.let {
+                name = it
+            }
+
+            result.possiblePhone?.let {
+                phone = it
+            }
+
+            result.possiblePincode?.let {
+                pincode = it
+            }
+
+            result.possibleCodAmount?.let {
+                cod = it
+            }
+
+            if (result.rawAddressText.isNotBlank()) {
+                address = result.rawAddressText
+            }
+
+        } catch (e: Exception) {
+            android.widget.Toast.makeText(
+                context,
+                "Label scan failed: ${e.message ?: "Unknown error"}",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        } finally {
+            isScanning = false
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -189,6 +250,23 @@ private fun AddShipmentDialog(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                item {
+                    androidx.compose.material3.Button(
+                        onClick = {
+                            labelPicker.launch("image/*")
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            when {
+                                isScanning -> "🔍 Reading Label..."
+                                labelUri == null -> "📸 Upload Label"
+                                else -> "✅ Label Scanned"
+                            }
+                        )
+                    }
+                }
+
                 item {
                     OutlinedTextField(
                         value = shipmentId,
@@ -288,7 +366,8 @@ private fun AddShipmentDialog(
                         address,
                         locality,
                         pincode,
-                        cod
+                        cod,
+                        labelUri?.toString()
                     )
                 }
             ) {

@@ -31,4 +31,13 @@ interface CustomerDao {
             "ORDER BY name COLLATE NOCASE ASC, id ASC",
     )
     suspend fun searchCustomers(pattern: String): List<CustomerEntity>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM shipments WHERE customerId = :customerId)")
+    suspend fun hasShipments(customerId: Long): Boolean
+
+    @Query("DELETE FROM addresses WHERE customerId = :customerId")
+    suspend fun deleteAddressesForCustomer(customerId: Long): Int
+
+    @Query("DELETE FROM customers WHERE id = :customerId")
+    suspend fun deleteCustomer(customerId: Long): Int
 }

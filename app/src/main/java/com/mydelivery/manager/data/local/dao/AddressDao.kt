@@ -24,6 +24,10 @@ interface AddressDao {
     @Query("SELECT * FROM addresses WHERE customerId = :customerId ORDER BY isPrimary DESC, id ASC")
     fun observeAddressesForCustomer(customerId: Long): Flow<List<AddressEntity>>
 
+
+    @Query("DELETE FROM addresses WHERE customerId = :customerId")
+    suspend fun deleteAddressesForCustomer(customerId: Long): Int
+
     @Query("SELECT * FROM addresses WHERE pincode = :pincode ORDER BY id ASC")
     suspend fun getAddressesByPincode(pincode: String): List<AddressEntity>
 }
