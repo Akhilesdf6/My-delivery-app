@@ -5,6 +5,7 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.mydelivery.manager.MyDeliveryManagerApplication
+import com.mydelivery.manager.ui.viewmodels.BulkScanViewModel
 import com.mydelivery.manager.ui.viewmodels.CodViewModel
 import com.mydelivery.manager.ui.viewmodels.CustomerViewModel
 import com.mydelivery.manager.ui.viewmodels.DeliveryViewModel
@@ -31,6 +32,9 @@ object AppViewModelProvider {
         initializer {
             val app = myDeliveryManagerApplication()
             CodViewModel(app.container.codRepository)
+        }
+        initializer {
+            BulkScanViewModel()
         }
     }
 }
