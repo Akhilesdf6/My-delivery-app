@@ -260,7 +260,7 @@ private fun AddShipmentDialog(
                         Text(
                             when {
                                 isScanning -> "🔍 Reading Label..."
-                                labelUris.isEmpty() -> "📸 Upload Label(s)"
+                                labelUri == null -> "📸 Upload Label"
                                 else -> "✅ Label Scanned"
                             }
                         )
@@ -367,7 +367,7 @@ private fun AddShipmentDialog(
                         locality,
                         pincode,
                         cod,
-                        labelUris.firstOrNull()?.toString()
+                        labelUri?.toString()
                     )
                 }
             ) {

@@ -186,17 +186,17 @@ private fun AddShipmentDialog(
     var locality by remember { mutableStateOf("") }
     var pincode by remember { mutableStateOf("") }
     var cod by remember { mutableStateOf("") }
-    var labelUris by remember { mutableStateOf<List<android.net.Uri>>(emptyList()) }
+    var labelUri by remember { mutableStateOf<android.net.Uri?>(null) }
     var isScanning by remember { mutableStateOf(false) }
 
     val labelPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetMultipleContents()
-    ) { uris ->
-        labelUris = uris
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        labelUri = uri
     }
 
-    LaunchedEffect(labelUris) {
-        val uri = labelUris.firstOrNull() ?: return@LaunchedEffect
+    LaunchedEffect(labelUri) {
+        val uri = labelUri ?: return@LaunchedEffect
 
         isScanning = true
 
@@ -260,7 +260,7 @@ private fun AddShipmentDialog(
                         Text(
                             when {
                                 isScanning -> "🔍 Reading Label..."
-                                labelUris.isEmpty() -> "📸 Upload Label(s)"
+                                labelUri == null -> "📸 Upload Label"
                                 else -> "✅ Label Scanned"
                             }
                         )
@@ -367,7 +367,7 @@ private fun AddShipmentDialog(
                         locality,
                         pincode,
                         cod,
-                        labelUris.firstOrNull()?.toString()
+                        labelUri?.toString()
                     )
                 }
             ) {
